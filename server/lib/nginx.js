@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
-const CONF = process.env.NGINX_CONF || '/etc/nginx/nginx.conf';
+const CONF = process.env.NGINX_CONF || '/tmp/nginx.conf';
 
 const PANEL_PORT = Number(process.env.PANEL_PORT || 8090);
 
@@ -120,7 +120,10 @@ export async function apply(inbounds, publicPort = Number(process.env.NGINX_PORT
   }
 
   try {
-    await run('nginx', ['-t'], { timeout: 8000, env: { ...process.env } });
+    await run('nginx', ['-c', CONF, '-t'], {
+  timeout: 8000,
+  env: { ...process.env }
+});
   } catch (err) {
     if (previous) writeFileSync(CONF, previous);
     lastResult = { ok: false, at: new Date().toISOString(), error: 'nginx -t rejected: ' + (err.stderr || err.message).trim(), routes: 0 };
@@ -128,7 +131,9 @@ export async function apply(inbounds, publicPort = Number(process.env.NGINX_PORT
   }
 
   try {
-    await run('nginx', ['-s', 'reload'], { timeout: 8000 });
+    await run('nginx', ['-c', CONF, '-s', 'reload'], {
+  timeout: 8000
+});
   } catch (err) {
     lastResult = { ok: false, at: new Date().toISOString(), error: 'reload failed: ' + (err.stderr || err.message).trim(), routes: 0 };
     return lastResult;
